@@ -39,14 +39,23 @@ class DEQFixedPoint(torch.autograd.Function):
 
         z_star.requires_grad_()
 
-        # Функция для вычисления VJP
+        # Эта функция вычисляет векторно-якобиевское произведение (VJP) в обратном направлении
         def g_rev(v):
-            with torch.enable_grad():
-                f_val = f(z_star, x)
-            vjp = torch.autograd.grad(f_val, z_star, grad_outputs=v, retain_graph=True)[0]
+            # v — текущая оценка вектора, который мы ищем
+            with torch.enable_grad():       # включаем запись графа только внутри
+                f_val = f(z_star, x)         # прямой проход один раз
+            # Считаем ∇_z (f(z*, x)) · v   — это и есть VJP
+            vjp = torch.autograd.grad(
+                outputs=f_val,
+                inputs=z_star,
+                grad_outputs=v,             # вот сюда подставляем вектор v
+                retain_graph=True           # граф нужен ещё много раз
+            )[0]
+            # По формуле неявного дифференцирования: v* = grad_output + ∇_z f · v*
             return grad_output + vjp
 
-        # Ищем решение обратной системы итеративно
+        # Теперь решаем уравнение v* = grad_output + ∇_z f(z*, x) · v*  итеративно
+        # (точно так же, как в прямом проходе искали z*)
         v = torch.zeros_like(grad_output)
         with torch.no_grad():
             for i in range(ctx.max_iter):
