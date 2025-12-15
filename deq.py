@@ -19,7 +19,7 @@ class DEQFixedPoint(torch.autograd.Function):
             for i in range(max_iter):
                 z_prev = z
                 z = f(z, x)
-                #Вычисляет норму тензора. По умолчанию это L2-норма
+                #Вычисляет норму тензора. По умолчанию это L2-норма (евклидова)
                 if torch.norm(z - z_prev) < threshold:
                     break
 
@@ -33,18 +33,18 @@ class DEQFixedPoint(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        # Обратный проход: Implicit Differentiation
+        # Обратный проход и Неявное дифференцирование
         z_star, x = ctx.saved_tensors
         f = ctx.f
 
         z_star.requires_grad_()
 
-        # Эта функция вычисляет векторно-якобиевское произведение (VJP) в обратном направлении
+        # Эта функция вычисляет векторно-якобиевское произведение в обратном направлении
         def g_rev(v):
             # v — текущая оценка вектора, который мы ищем
             with torch.enable_grad():       # включаем запись графа только внутри
                 f_val = f(z_star, x)         # прямой проход один раз
-            # Считаем ∇_z (f(z*, x)) · v   — это и есть VJP
+            # Считаем ∇_z (f(z*, x)) · v   — это и есть векторно-якобиевское произведение
             vjp = torch.autograd.grad(
                 outputs=f_val,
                 inputs=z_star,

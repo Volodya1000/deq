@@ -20,11 +20,13 @@ class ResNetLayer(nn.Module):
         self.activation = nn.Tanh()
 
     def forward(self, z, x):
+        # Основная формула: f(z, x) = tanh(Wz * z + Wx * x)
         return self.activation(self.fc_z(z) + self.fc_x(x))
 
 
 class DEQSequenceModel(nn.Module):
-    """DEQ-модель для прогнозирования временных рядов"""
+    """DEQ-модель, которая ищет фиксированную точку z = f(z, x),
+    а затем декодирует найденное состояние."""
 
     def __init__(self, input_dim, hidden_dim, output_dim):
         super().__init__()
@@ -35,5 +37,6 @@ class DEQSequenceModel(nn.Module):
     def forward(self, x):
         bsz = x.shape[0]
         z_init = torch.zeros(bsz, self.hidden_dim, device=x.device)
+        # DEQ ищет z*, такое что z* = f(z*, x)
         z_star = DEQFixedPoint.apply(self.f_layer, x, z_init)
         return self.decoder(z_star)
